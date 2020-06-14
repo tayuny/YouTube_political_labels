@@ -1,0 +1,314 @@
+\documentclass[letterpaper, 12pt]{article}
+
+\usepackage[margin=1in]{geometry}   % Sets one-inch margins.
+\usepackage{lmodern}                % Sets the font.
+\usepackage{cite}                   % Supports BibTeX citations.
+\usepackage{enumerate}              % Gives enumeration options.
+\usepackage{amsmath}                % Handles equations.
+\usepackage{booktabs}               % Makes publication-quality tables.
+\usepackage{multirow}               % Allows multi-row cells.
+\usepackage[table]{xcolor}          % Colors table cells.
+\usepackage{caption}                % Writes captions for tables and figures.
+\usepackage{subcaption}             % Writes captions for subfigures.
+\usepackage{tikz}                   % Draws vector graphics.
+\usetikzlibrary{positioning}        % Allows relative positioning in tikz.
+\usepackage{float}                  % Places figure where it occurs in the file.
+\usepackage[export]{adjustbox}      % Scales figures into a bounding box.
+\usepackage{fancyvrb}               % Writes blocks of code as-is.
+\usepackage{soul}                   % Highlights text.
+\usepackage{calc}
+\usepackage{ifthen}
+
+% Import pgf files with raster images.
+\usepackage{pgf}
+\newcommand\inputpgf[2]{{
+\let\pgfimageWithoutPath\pgfimage
+\renewcommand{\pgfimage}[2][]{\pgfimageWithoutPath[##1]{#1/##2}}
+\input{#1/#2}
+}}
+
+% Skip lines between paragraphs.
+\usepackage{parskip}
+\setlength{\parskip}{1em}
+
+% Include a subtitle in the title block.
+\usepackage{titling}
+\newcommand{\subtitle}[1]{
+  \posttitle{
+    \par\end{center}
+    \begin{center}\large#1\end{center}
+    \vskip0.5em
+  }
+}
+
+% Remove footnote indentation of references in the title block.
+\settowidth{\thanksmarkwidth}{*}
+\setlength{\thanksmargin}{-\thanksmarkwidth}
+
+% Write the title block.
+\setlength{\droptitle}{-2em}
+\title{Recovering Self-selected YouTube Video Categories}
+\subtitle{\textit{CAPP 30255: Advanced Machine Learning for Public Policy}}
+\author{Ta-Yun Yang \& Patrick Lavallee Delgado\thanks{Candidates, MS Computational Analysis and Public Policy, \{tayuny, pld\}@uchicago.edu.}}
+\date{8 June 2020}
+
+% Add page headers.
+\usepackage{titleps}
+\newpagestyle{page_headers}{
+  \headrule
+  \sethead{\thetitle}{}{\sectiontitle}
+  \setfoot{}{\thepage}{}
+}
+\settitlemarks{section,subsection}
+\pagestyle{page_headers}
+
+\begin{document}
+
+\maketitle
+
+\section{YouTube data}
+
+\begin{table}[H]
+  \centering
+  \caption*{Videos by category}
+  \begin{tabular}{lrr@{\%}p{1em}rr@{\%}}
+    \toprule
+    Category & \multicolumn{2}{l}{\enspace With captions \enspace} & & \multicolumn{2}{l}{Without captions} \\
+    \midrule
+    Entertainment           & 1149  & 28  & & 1619  & 25 \\
+    How-to \& Style         & 515   & 13  & & 595   & 9  \\
+    Comedy                  & 444   & 11  & & 547   & 9  \\
+    People \& Blogs         & 354   & 9   & & 498   & 8  \\
+    News \& Politics        & 302   & 7   & & 505   & 8  \\
+    Science \& Technology   & 300   & 7   & & 380   & 6  \\
+    Music                   & 235   & 6   & & 799   & 13 \\
+    Education               & 228   & 6   & & 250   & 4  \\ 
+    Film \& Animation       & 212   & 5   & & 318   & 5  \\
+    Sports                  & 165   & 4   & & 451   & 7  \\
+    \hline
+    Pets \& Animals         & 67    & 2   & & 138   & 2  \\
+    Gaming                  & 51    & 1   & & 103   & 2  \\
+    Autos \& Vehicles       & 37    & 1   & & 70    & 1  \\
+    Travel \& Events        & 34    & 1   & & 60    & 1  \\
+    Nonprofits \& Activism  & 9     & 0   & & 14    & 0  \\
+    Shows                   & 4     & 0   & & 4     & 0  \\
+    \bottomrule
+    Sum                     & 6351  & 100 & & 4106  & 100 \\
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption*{Vocabulary by category}
+  \begin{tabular}{lrr@{\%}p{1em}rr@{\%}}
+    \toprule
+    & \multicolumn{2}{c}{\textsc{\enspace with captions \enspace}} & & \multicolumn{2}{c}{\textsc{without captions}} \\
+    \cmidrule{2-3} \cmidrule{5-6}
+    News \& Politics vs: & Size & \multicolumn{1}{r}{Shared} & & Size & \multicolumn{1}{r}{Shared} \\ 
+    \midrule
+    Self                    & 22650 & 100 & & 8278  & 100 \\ 
+    \hline
+    Entertainment           & 25002 & 50  & & 20509 & 55  \\
+    How-to \& Style         & 25002 & 44  & & 12119 & 37  \\
+    Comedy                  & 20800 & 41  & & 8517  & 35  \\
+    People \& Blogs         & 23392 & 45  & & 10187 & 38  \\
+    Science \& Technology   & 21897 & 43  & & 8579  & 35  \\
+    Music                   & 12385 & 28  & & 11270 & 34  \\
+    Education               & 20491 & 42  & & 7853  & 31  \\
+    Film \& Animation       & 18525 & 40  & & 8056  & 32  \\
+    Sports                  & 12707 & 31  & & 5951  & 27  \\
+    \hline
+    Pets \& Animals         & 6781  & 19  & & 3512  & 19  \\
+    Gaming                  & 8685  & 24  & & 2528  & 14  \\
+    Autos \& Vehicles       & 5363  & 16  & & 2246  & 13  \\
+    Travel \& Events        & 5786  & 15  & & 2230  & 13  \\
+    Nonprofits \& Activism  & 3837  & 13  & & 908   & 6   \\
+    Shows                   & 950   & 3   & & 221   & 2   \\
+    \hline
+    Corpus                  & 25002 & 53  & & 25002 & 62  \\
+    \bottomrule
+    \multicolumn{6}{l}{\small\textit{Note: vocabulary capped at 25,000 most frequent words, excluding stop}} \\
+    \multicolumn{6}{l}{\small\textit{words, plus tokens for unknown words and padding.}}
+  \end{tabular}
+\end{table}
+
+\begin{Verbatim}
+  {
+    video_id: 1ZAPwfrtAFY,
+
+    title: 'The Trump Presidency: Last Week Tonight with John Oliver (HBO)',
+
+    category_id: 24,  // Entertainment
+
+    tags: 'last week tonight trump presidency|"last week tonight donald trump"
+      "john oliver trump"|"donald trump"',
+
+    description: "One year after the presidential election, John Oliver
+    discusses what we've learned so far and enlists our catheter cowboy to
+    teach Donald Trump what he hasn't.\\n\\nConnect with Last Week Tonight…",
+
+    caption: 'The presidency of Donald Trump. The man voted "Least Edible" by
+    Cannibal Magazine -six years in a row. -(AUDIENCE LAUGHING) -A-- And I know,
+    I honestly know that the prospect of talking about Trump yet again feels…'
+  }
+\end{Verbatim}
+
+\section{Pipeline}
+
+\begin{center}
+  \begin{tikzpicture}[x=1cm, y=1cm]
+    \draw (0, 3) rectangle (4, 5) node[pos=0.5] {\texttt{run\_pipeline.py}};
+    \draw[<-, thick] (2, 5) -- (2, 7) node[above] {\texttt{config.yaml}};
+    \draw[->, thick] (4, 4) -- (5, 4);
+    \draw (5, 3) rectangle (8, 5) node[pos=0.5] {\texttt{get\_data()}};
+    \draw[<-, thick] (6.25, 5) -- (5, 6) node[above] {\texttt{data/USvideos.csv}};
+    \draw[<-, thick] (6.75, 5) -- (8, 7) node[above] {\texttt{data/transcripts.txt}};
+    \draw[->, thick] (8, 4) -- (9, 4);
+    \draw (9, 3) rectangle (14, 5) node[pos=0.5] {\texttt{run\_data\_pipeline()}};
+    \draw[<-, thick] (11.5, 5) -- (11.5, 6) node[above] {\texttt{data\_pipeline.py}};
+    \draw[->, thick] (14, 4) -- (15, 4) -- (15, 1) -- (14, 1);
+    \draw (9, 0) rectangle (14, 2) node[pos=0.5] {\texttt{get\_labels\_and\_corpus()}};
+    \draw[<-, thick] (8, 1) -- (9, 1);
+    \draw (5, 0) rectangle (8, 2) node[pos=0.5] {\texttt{get\_vocab()}};
+    \draw[<-, thick] (4, 1) -- (5, 1);
+    \draw (1, 0) rectangle (4, 2) node[pos=0.5] {\texttt{get\_batches()}};
+    \draw[->, thick] (1, 1) -- (0, 1) -- (0, -2) -- (1, -2);
+    \draw (1, -3) rectangle (6.5, -1) node[pos=0.5]  {\texttt{run\_modeling\_pipeline()}};
+    \draw[<-, thick] (3.50, -3) -- (1.75, -4) node[below] {\texttt{nnmodels.py}};
+    \draw[<-, thick] (4, -3) -- (6, -4) node[below] {\texttt{train\_eval.py}};
+    \draw[->, thick] (6.5, -2) -- (7, -2);
+    \draw (7, -3) rectangle (10.5, -1) node[pos=0.5] {\texttt{train\_model()}};
+    \draw[->, thick] (10.5, -2) -- (11, -2);
+    \draw (11, -3) rectangle (14, -1) node[pos=0.5] {\texttt{evaluate()}};
+    \draw[->, thick] (14, -2) -- (15, -2) -- (15, -6) -- (14, -6);
+    \draw (10, -7) rectangle (14, -5) node[pos=0.5] {\texttt{write\_results()}};
+    \draw[->, thick] (10, -6) -- (8.5, -5.5) node[left] {\texttt{results.txt}};
+    \draw[->, thick] (10, -6) -- (8.5, -6.5) node[left] {\texttt{model.pt}};
+  \end{tikzpicture}
+\end{center}
+
+\newpage
+
+\begin{Verbatim}
+data:
+  col_labels: 'category_id'
+  col_corpus: ['title', 'tags', 'description', 'caption']
+  label_target: 'News & Politics'
+  label_others: ['Entertainment']
+  splits: [0.4, 0.4, 0.2]
+  ngram_size: 1
+  vocab_size: 25000
+  batch_size: 64
+models:
+  - model: CNN
+    embedding_dim: 100
+    n_filters: 200
+    filter_sizes: [3, 4, 5]
+    output_dim: 1
+    dropout: 0.5
+  - model: LSTM
+    embedding_dim: 100
+    hidden_dim: 50
+    output_dim: 1
+    n_layers: 4
+    bidirectional: True
+    dropout: 0.5
+decision_metric: 'loss'
+out_directory: 'politics_entertainment/'
+\end{Verbatim}
+
+\section{Models}
+
+\begin{table}[H]
+  \centering
+  \caption*{Results from average word embedding models}
+  \begin{tabular}{lr@{.}lr@{.}lr@{.}lp{1em}r@{.}lr@{.}lr@{.}l}
+    \toprule
+    & \multicolumn{6}{c}{\textsc{with captions}} & & \multicolumn{6}{c}{\textsc{without captions}} \\
+    \cmidrule{2-7} \cmidrule{9-14}
+    News \& Politics vs: & \multicolumn{2}{r}{Accuracy} & \multicolumn{2}{r}{Precision} & \multicolumn{2}{r}{Recall} & & \multicolumn{2}{r}{Accuracy} & \multicolumn{2}{r}{Precision} & \multicolumn{2}{r}{Recall} \\
+    \midrule
+    Entertainment         & 0 & 77  & \multicolumn{2}{l}{---} & 0 & 00 & & 0 & 70 &	\multicolumn{2}{l}{---} &	0 & 13 \\
+    How-to \& Style       & 0 & 65	& \multicolumn{2}{l}{---}	& 0 & 01 & & 0 & 55 &	0 & 51                  &	0 & 61 \\
+    Comedy                & 0 & 55	& \multicolumn{2}{l}{---}	& 0 & 00 & & 0 & 53 &	0 & 52                  &	0 & 57 \\
+    People \& Blogs       & 0 & 57	& 0 & 83                  &	0 & 52 & & 0 & 62 &	0 & 65                  &	0 & 65 \\
+    Science \& Technology & 0 & 50	& 0 & 40                  &	0 & 28 & & 0 & 54 &	0 & 55                  & 0 & 95 \\
+    Music                 & 0 & 63	& 0 & 62                  &	1 & 00 & & 0 & 45 &	0 & 40                  &	0 & 43 \\
+    Education             & 0 & 59	& 0 & 59                  &	1 & 00 & & 0 & 72 &	0 & 72                  &	1 & 00 \\
+    Film \& Animation     & 0 & 60	& 0 & 60                  &	1 & 00 & & 0 & 57 &	0 & 58                  &	0 & 99 \\
+    Sports                & 0 & 70	& 0 & 69                  & 1 & 00 & & 0 & 52 &	0 & 66                  &	0 & 28 \\
+    \bottomrule
+    Corpus                & 0 & 92  & \multicolumn{2}{l}{---} & 0 & 00 & & 0 & 87 &	\multicolumn{2}{l}{---}	& 0 & 02 \\
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption*{Results from CNN models}
+  \begin{tabular}{lr@{.}lr@{.}lr@{.}lp{1em}r@{.}lr@{.}lr@{.}l}
+    \toprule
+    & \multicolumn{6}{c}{\textsc{with captions}} & & \multicolumn{6}{c}{\textsc{without captions}} \\
+    \cmidrule{2-7} \cmidrule{9-14}
+    News \& Politics vs: & \multicolumn{2}{r}{Accuracy} & \multicolumn{2}{r}{Precision} & \multicolumn{2}{r}{Recall} & & \multicolumn{2}{r}{Accuracy} & \multicolumn{2}{r}{Precision} & \multicolumn{2}{r}{Recall} \\
+    \midrule
+    Entertainment         & 0 & 77  & \multicolumn{2}{l}{---} & 0 & 00 & & 0 & 75 & \multicolumn{2}{l}{---} &	0 & 00 \\
+    How-to \& Style       & 0 & 65	& \multicolumn{2}{l}{---}	& 0 & 00 & & 0 & 47 &	0 & 47                  &	0 & 98 \\
+    Comedy                & 0 & 55	& \multicolumn{2}{l}{---}	& 0 & 00 & & 0 & 49 &	0 & 51                  &	0 & 27 \\
+    People \& Blogs       & 0 & 49	& \multicolumn{2}{l}{---} &	0 & 00 & & 0 & 51 & 0	& 56                  &	0 & 23 \\
+    Science \& Technology & 0 & 48	& 0 & 48                  &	0 & 00 & & 0 & 54 &	0 & 54                  &	0 & 99 \\
+    Music                 & 0 & 63	& 0 & 62                  &	1 & 00 & & 0 & 57 &	0 & 50                  &	0 & 48 \\
+    Education             & 0 & 59	& 0 & 59                  &	1 & 00 & & 0 & 39 &	0 & 62                  &	0 & 29 \\
+    Film \& Animation     & 0 & 60	& 0 & 60                  &	1 & 00 & & 0 & 59 &	0 & 58                  &	1 & 00 \\
+    Sports                & 0 & 39	& 0 & 71                  & 0 & 21 & & 0 & 49 &	0 & 49                  &	1 & 00 \\
+    \bottomrule
+    Corpus                & 0 & 92  & \multicolumn{2}{l}{---} & 0 & 00 & & 0 & 91 & \multicolumn{2}{l}{---} &	0 & 00 \\
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption*{Results from LSTM models}
+  \begin{tabular}{lr@{.}lr@{.}lr@{.}lp{1em}r@{.}lr@{.}lr@{.}l}
+    \toprule
+    & \multicolumn{6}{c}{\textsc{with captions}} & & \multicolumn{6}{c}{\textsc{without captions}} \\
+    \cmidrule{2-7} \cmidrule{9-14}
+    News \& Politics vs: & \multicolumn{2}{r}{Accuracy} & \multicolumn{2}{r}{Precision} & \multicolumn{2}{r}{Recall} & & \multicolumn{2}{r}{Accuracy} & \multicolumn{2}{r}{Precision} & \multicolumn{2}{r}{Recall} \\
+    \midrule
+    Entertainment         & 0 & 68  & 0 & 27                  & 0 & 20 & & 0 & 74 &	\multicolumn{2}{l}{---}	& 0 & 08 \\
+    How-to \& Style       & 0 & 40  & 0 & 32                  & 0 &	58 & & 0 & 45	& 0 & 45                	& 0 & 83 \\
+    Comedy                & 0 & 61  &	0 & 54                  &	0 & 73 & & 0 & 46	& 0 & 47                  &	0 & 70 \\
+    People \& Blogs       & 0 & 59  &	0 & 70                  &	0 & 39 & & 0 & 55	& 0 & 56                  &	0 & 84 \\
+    Science \& Technology & 0 & 44	& 0 & 45                  &	0 & 79 & & 0 & 56	& 0 & 58                  &	0 & 69 \\
+    Music                 & 0 & 56  & 0 & 63                  &	0 & 67 & & 0 & 58	& 0 & 54                  &	0 & 39 \\
+    Education             & 0 & 49  & 0 & 56                  &	0 & 56 & & 0 & 66	& 0 & 71                  &	0 & 89 \\
+    Film \& Animation     & 0 & 47  &	0 & 55                  &	0 & 54 & & 0 & 48	& 0 & 56                  &	0 & 51 \\
+    Sports                & 0 & 63  &	0 & 69                  &	0 & 82 & & 0 & 48 &	0 & 44                  &	0 & 24 \\
+    \bottomrule
+    Corpus                & 0 & 92  & \multicolumn{2}{l}{---} & 0 & 00 & & 0 & 91 &	\multicolumn{2}{l}{---}	& 0 & 02 \\
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption*{Results from GRU models}
+  \begin{tabular}{lr@{.}lr@{.}lr@{.}lp{1em}r@{.}lr@{.}lr@{.}l}
+    \toprule
+    & \multicolumn{6}{c}{\textsc{with captions}} & & \multicolumn{6}{c}{\textsc{without captions}} \\
+    \cmidrule{2-7} \cmidrule{9-14}
+    News \& Politics vs: & \multicolumn{2}{r}{Accuracy} & \multicolumn{2}{r}{Precision} & \multicolumn{2}{r}{Recall} & & \multicolumn{2}{r}{Accuracy} & \multicolumn{2}{r}{Precision} & \multicolumn{2}{r}{Recall} \\
+    \midrule
+    Entertainment         & 0 & 63  &	0 & 28                  &	0 & 37 & & 0 & 72 &	0 & 33 &	0 & 11 \\
+    How-to \& Style       & 0 & 48	& 0 & 36                  &	0 & 59 & & 0 & 49 &	0 & 46 &	0 & 37 \\
+    Comedy                & 0 & 50  &	0 & 43                  &	0 & 35 & & 0 & 49 &	0 & 55 &	0 & 20 \\
+    People \& Blogs       & 0 & 54  & 0 & 53                  &	0 & 83 & & 0 & 58 &	0 & 59 &	0 & 79 \\
+    Science \& Technology & 0 & 59	& 0 & 63                  & 0 & 35 & & 0 & 46 &	0 & 51 &	0 & 40 \\
+    Music                 & 0 & 61  & 0 & 68                  &	0 & 69 & & 0 & 49 &	0 & 48 &	0 & 32 \\
+    Education             & 0 & 53  &	0 & 65                  &	0 & 41 & & 0 & 64 &	0 & 71 &	0 & 84 \\
+    Film \& Animation     & 0 & 59  &	0 & 67                  &	0 & 63 & & 0 & 54 &	0 & 58 &	0 & 81 \\
+    Sports                & 0 & 63  &	0 & 69                  &	0 & 84 & & 0 & 54 &	0 & 51 &	0 & 72 \\
+    \bottomrule
+    Corpus                & 0 & 92  & \multicolumn{2}{l}{---} & 0 & 00 & & 0 & 92 & \multicolumn{2}{l}{---} &	0 & 00 \\
+  \end{tabular}
+\end{table}
+
+\end{document}

@@ -1,0 +1,246 @@
+\documentclass[letterpaper, 12pt]{article}
+
+\usepackage[margin=1in]{geometry}   % Sets one-inch margins.
+\usepackage{lmodern}                % Sets the font.
+\usepackage{cite}                   % Supports BibTeX citations.
+\usepackage{enumerate}              % Gives enumeration options.
+\usepackage{amsmath}                % Handles equations.
+\usepackage{booktabs}               % Makes publication-quality tables.
+\usepackage{multirow}               % Allows multi-row cells.
+\usepackage[table]{xcolor}          % Colors table cells.
+\usepackage{caption}                % Writes captions for tables and figures.
+\usepackage{subcaption}             % Writes captions for subfigures.
+\usepackage{tikz}                   % Draws vector graphics.
+\usetikzlibrary{positioning}        % Allows relative positioning in tikz.
+\usepackage{float}                  % Places figure where it occurs in the file.
+\usepackage[export]{adjustbox}      % Scales figures into a bounding box.
+\usepackage{fancyvrb}               % Writes blocks of code as-is.
+\usepackage{soul}                   % Highlights text.
+\usepackage{calc}
+\usepackage{ifthen}
+
+% Import pgf files with raster images.
+\usepackage{pgf}
+\newcommand\inputpgf[2]{{
+\let\pgfimageWithoutPath\pgfimage
+\renewcommand{\pgfimage}[2][]{\pgfimageWithoutPath[##1]{#1/##2}}
+\input{#1/#2}
+}}
+
+% Skip lines between paragraphs.
+\usepackage{parskip}
+\setlength{\parskip}{1em}
+
+% Include a subtitle in the title block.
+\usepackage{titling}
+\newcommand{\subtitle}[1]{
+  \posttitle{
+    \par\end{center}
+    \begin{center}\large#1\end{center}
+    \vskip0.5em
+  }
+}
+
+% Remove footnote indentation of references in the title block.
+\settowidth{\thanksmarkwidth}{*}
+\setlength{\thanksmargin}{-\thanksmarkwidth}
+
+% Write the title block.
+\setlength{\droptitle}{-2em}
+\title{Reverse-engineering Self-selection into YouTube Video Categories}
+\subtitle{\textit{CAPP 30255: Advanced Machine Learning for Public Policy}}
+\author{Ta-Yun Yang \& Patrick Lavallee Delgado\thanks{Candidates, MS Computational Analysis and Public Policy, \{tayuny, pld\}@uchicago.edu.}}
+\date{20 April 2020}
+
+% Add page headers.
+\usepackage{titleps}
+\newpagestyle{page_headers}{
+  \headrule
+  \sethead{\thetitle}{}{\sectiontitle}
+  \setfoot{}{\thepage}{}
+}
+\settitlemarks{section,subsection}
+\pagestyle{page_headers}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+When forced to choose an identity, how do we reconcile everything about ourselves into the confines of a label? And despite everything that seems to separate some of us, how is it that we still identify the same? Broad categories are convenient for individuals to sort their preferences into cultures, politics, and other social phenomena, but messy because the ambiguity of language allows each to attach his or her own meaning to those labels. While there may exist quantitative markers with which to explain why an individual subscribes to one category and not another, qualitative language is interesting because its deliberate word choice demonstrates additional stated preference for substantiating the same.
+
+More precisely, we are interested in how individuals self-select into arbitrary categories using other instances of self-expression. YouTube offers a simple version of this challenge. As a user uploads video content, he must describe the work in the title, description, tags, and category. The user may use any words he wishes, so long as he remains consistent with YouTube's community guidelines; but he is limited by the categories available and he must choose exactly one category. These categories are broad and several may apply to his video. For example, a funny video of a dog playing volleyball could conceivably exist in the ``Pets $\&$ Animals'', ``Sports'', and ``Comedy'' categories. Which does the user choose and why? We attempt recreate his decision using the language he chooses to describe his content along with examples of others in the YouTube community.
+
+Our copy of the YouTube data collects the descriptions and activity statistics of the most-watched videos for every day between November 2017 and June 2018 by country. This is freely available from the YouTube API. The data has two levels: words in videos and videos in categories. Table \ref{table:categories} lists the 30  categories from which the user chooses. Table \ref{table:summary_stats} summarizes the number of videos users upload by country and the size of the corpus of text available to our study.
+
+\begin{table}[H]
+  \caption{YouTube video labels}
+  \centering
+  \resizebox{\textwidth}{!} {
+    \begin{tabular}{lllll}
+      \toprule
+      Action/Adventure & Drama & Gaming & People \& Blogs & Shows \\
+      Anime/Animation & Education & Horror & Pets \& Animals & Sports \\
+      Autos \& Vehicles & Entertainment & Howto \& Style & Sci-Fi/Fantasy & Thriller \\
+      Classics & Family & Movies & Science \& Technology & Trailers \\
+      Comedy & Film \& Animation & Music & Short Movies & Travel \& Events \\
+      Documentary & Foreign & News \& Politics & Shorts & Videoblogging \\
+      \bottomrule
+      \multicolumn{5}{l}{\small\textit{Note: the United States has an additional category, Nonprofits \& Activism.}} \\
+    \end{tabular}
+  }
+  \label{table:categories}
+\end{table}
+
+\begin{table}[H]
+  \caption{Summary of observations in YouTube video data}
+  \centering
+  \resizebox{\textwidth}{!} {
+    \begin{tabular}{lrrrr}
+      \toprule
+      Country & Total videos & Unique videos & Average tag count & Unique tag words \\
+      \midrule
+      Canada & 40881 & 24427 & 19.58 & 75459 \\
+      Germany & 40840 & 29627 & 17.97 & 109309 \\
+      France & 45090 & 31459 & 14.70 & 83825 \\
+      India & 37352 & 16307 & 18.76 & 49084 \\
+      Japan & 20523 & 1705 \\
+      Mexico & 40451 & 321 \\
+      Russia & 40739 & 1528 \\
+      South Korea & 34568 & 443 \\
+      United Kingdom & 38916 & 3272 & 18.00 & 21930 \\
+      United States & 40949 & 6351 & 19.74 & 31951 \\
+      \bottomrule
+      \multicolumn{5}{l}{\small\textit{Note: missing values were not available in time for submission of this proposal.}} \\
+    \end{tabular}
+  }
+  \label{table:summary_stats}
+\end{table}
+
+In the sections that follow, we discuss the related work that is the foundation for our study and then the plan of action pursuing and evaluating the same.
+
+\section{Related work}
+
+Our challenge is fundamentally an exercise in \textit{text segmentation}, grouping language into coherent topic clusters using the lexical cohesion that arises from the semantic relationships between words. An early attempt to group text with shared meaning is lexical chaining \cite{morris-hirst-1991-lexical}, which links nearby words on whether they exist in related thesaurus categories and evaluates the strength of the resulting chains on frequency and density. This inspired years of work on unsupervised text segmentation, which uses the frequency and co-occurrence of words to identify topic boundaries in a text. Among the first of these algorithms is TextTiling \cite{hearst-1997-texttiling}, which compares the lexical similarity of adjacent sentence groups from the words those sentences share, and finds a topic boundary where the similarity of words between those groups is low. The choice in topic boundary from several possibilities improves with Latent Semantic Analysis (LDA) \cite{choi-etal-2001-latent}, which uses principle component analysis to cluster the frequency of co-occurring words in order to reveal semantic dissimilarities between sentence groups.
+
+Beyond the neatness of written text, this area of research also explores language with multiple participants at different times. Addressing this variation in meeting transcripts is the Lexical Cohesion-based Segmenter (LCSeg) algorithm \cite{galley-etal-2003-discourse}, which identifies lexical chains on word frequency alone and compares the cosine similarity of lexical chains among adjacent sentence groups to identify potential topic boundaries in a manner similar to TextTiling. Other work extends LCSeg to asynchronous conversations in emails threads and blog comments \cite{joty-etal-2013-topic}, which draws paths to sequential fragments in different texts and consolidates topic clusters that LCSeg identifies with those that have a high cosine similarity among their sentences. A generative approach is the TopicTiling algorithm \cite{riedl-biemann-2012-topictiling}, which uses latent Dirichlet allocation (LSA) \cite{blei-etal-2003-latent} to estimate topic-word and topic-document probability distributions from a corpus of text that can associate topics to words in a document; in an extension of TextTiling, it finds a topic boundary where the cosine similarity of topics between sentence groups is low.
+
+We wish to emphasize the representation of words as it influences our conceptualization of how we establish semantic relationships in our work. The algorithms we describe so far map the vocabulary of a corpus to a matrix in which each dimension represents one word. The most popular implementations include bag of words (BOW) and n-grams. But, these representations do not preserve word order and the informative structure of language; text segmentation algorithms go to great lengths to recover semantic relationships. Improvements to text representations include increasing the size of the n-gram or even allowing n-grams of varying lengths to encode phrases \cite{mikolov-etal-2013-skipgram}. Other approaches \cite{bengio-2003-neural} revise the BOW representation and estimate the distribution of each word and predict that of new words. The experiment in the large variety of English texts from the Brown corpus (1,181,041 words) and Associated Press News (13,994,528) shows that the new model is significantly more efficient in terms of text perplexity comparing to traditional n-grams. Moreover, the improved versions of the text representation algorithms optimize their run time for more sophisticated text \cite{luong-2013-rnn} \cite{morin-2005-hierarchical}.
+
+Yet, as the size of the vocabulary increases, so do the number of dimensions to the point where the the accuracy of our estimates deteriorate and the calculation becomes intractable. A simple solution is TF-IDF, which preserves words with high frequency among all documents in a corpus to maintain those that offer the most information \cite{ramos-2003-tf-idf}. Dimensionality reduction techniques provide a feasible path to balance the trade-off between complexity and information preservation. A low-dimensioned projection can be derived via singular value decomposition (SVD) with limited loss of information from the text. Zhang, Yoshida, and Tang \cite{zhang-2011-lsi} compared the efficiency and accuracy of TF-IDF and latent semantic indexing (LSI). After processing 14,150 Chinese academic articles and 21,578 English news from Reuters, LSI method is most effective in terms of information retrieval from text classifications with support vector machines. However, the defect of dimensionality reduction is also clear. Since the low-dimensioned features are the projections from the origin text representation, the interpretability of the weights declines.
+
+Recent advances in text segmentation use word embeddings, a departure from one-hot encodings that represent each word as its own dimension towards dense encodings that represent words as vectors in space. Training continuous vector representations of words with domain-specific text becomes its own task \cite{mikolov-etal-2013-efficient}. Among algorithms that demonstrate this improvement is GraphSeg \cite{glavas-etal-2016-unsupervised}, which draws a semantic relatedness graph of each sentence in a document to all others and creates segments composed of the adjacent sentences in maximal cliques; It calculates similarity of sentences as the sum of cosines of the embedding vector of each word in one sentence to that of each word in the other.
+
+The discipline builds to deep neural networks, perhaps the best approach to the problem we pursue. In a very similar case recovering the subsection titles of Wikipedia articles, the Sector algorithm \cite{sebastian-etal-2019-sector} learns an embedding of latent topics from ambiguous headings, segments the the document into coherent sections, and labels each section with a learned topic. It uses bidirectional long short-term memory (BLSTM) networks to generate the dense topic embedding matrix. This method allows us to ``remember'' previous information in a long sequence of text \cite{hochreiter-1997-lstm}. For the text segmentation phase, Sector traces movement in the topic embedding vector space over sentence groups and identifies a new section where that movement is fastest. For the section label decoding phase, it identifies the heading whose words have the strongest association with the topic embedding matrix. In a further departure from previous work, the end-to-end framework in Sector recasts text segmentation as a semi-supervised task: learning the semantic similarities of the text to define the scope of topics that in turn segment the text.
+
+We are also aware of significant research in the area of text classification, applying labels to the identified text segments. The YouTube data is different than many natural language processing challenges in that it is not strictly sequential: while we expect some semantic coherence at the video level, the order of videos may not be meaningful at the category level. We can, however, make inference to the change in composition of a category because we have time series data. This is all to say that the text classification should not label a video based on the relatively arbitrary position it holds in the corpus, but solely on its language features. Among strategies is minimizing the sum of distances between n-gram frequency rankings of the targeted category and the document \cite{cavnar-1994-ngram}. Since the method is simple and requires small amount of time, we will consider it as the baseline in comparison to more complicated classifiers, such as that proposed by the Sector algorithm.
+
+\section{Action plan}
+
+The purpose of this research is to automate and optimize the process of video classification for YouTube with its explicit text content. To be more specific, Title, Description and the Tags of the videos are used to train the classifiers determining whether a video is explicitly related to politics or not. Different text representation strategies, classifiers and combination of features are used to generate the predicted probability of each class. 
+
+After the labels are assigned or given to text entities, text features with corresponding class could be applied to various tasks. As the categories of the YouTube video are given in our data, we categorize the video with the explicit text attached to the video. Best practices offered by other researches suggest we use multiple groups of classifiers \cite{dumais-etal-1998-inductive} \cite{sebastiani-2002-ml}. These groups include logistic regression and naive Bayes from among probabilistic classifiers, random forest from among decision tree classifiers, as well as the nonlinear support vector machine and the stochastic gradient boosting methods \cite{friedman-2002-stochastic}.
+
+Cross validation is implemented to guarantee the predictions are robust, which will be performed by dividing the original data into five group of equal size. For every run of the model, a group will be selected as the testing set to evaluate the performance of the models trained by the remained data. Finally, among all the possible classifiers, the one with the highest average precision, recall and F1 score will be selected as the optimal model.
+
+\subsection{Programming language and packages}
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{ll}
+    \toprule
+    Purpose & Python packages \\
+    \midrule
+    Supervised and Unsupervised Learning & scikit-learn, PyTorch  \\
+    Deep Learning & PyTorch \\ 
+    Pre-processing Text & nltk, scikit-learn, PyTorch \\ 
+    Visualization &  matplotlib, seaborn \\ 
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Text representation}
+
+In order to transform text content to trainable vectors, four popular methods will be implemented in our analysis. Bag of words, TF-IDF with N-grams contain the information of frequency for words and text entities where the absolute order is not meaningful. Moreover, considering the high dimension from these two methods, Latent Semantic Indexing is used as an improvement via dimensional reduction. However, when we are tokenizing the text in title and description beside tags, the relation of each sentence also matters. Therefore, word embedding with Word2Vec is used to involve implicit connections between sentences and documents into trainable matrix. The following table shows the summary of the text representation strategies and the column on which they are executed.
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{ll}
+    \toprule
+    Text Representation & Columns implemented \\
+    \midrule
+    Bag of Words & Tags, Title, Description \\
+    TF-IDF & Tags, Title, Description \\
+    Latent Semantic Indexing & Tags, Title, Description \\
+    Word2Vec &  Title, Description \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Classifiers}
+
+Following the guidelines from the related work, three different groups of algorithms will be executed and compared. Because of its simplicity, we use the n-gram model as our baseline, which requires the least computational capacity followed by tradition supervised learning models. Finally, we will optimize the algorithms with LSTM and BLSTM methods and evaluate whether the extra capacity spent in the YouTube video classification is cost-effective.
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{ll}
+    \toprule
+    Classifier family & Classifiers \\
+    \midrule
+    Baseline & Simple N-gram distance \\ [0.5em]
+    \multirow{2}{*}{Supervised Learning Models} & Logistic Regression, Random Forest \\
+    & Support Vector Machine, Gradient Boosting \\ [0.5em]
+    Deep Learning & Long Short Term Memory (LSTM), BLSTM \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Features}
+
+Since tags and titles are often directly related to the determined category, we are interested in their independent effect to the accuracy of the model. Moreover, concerning that tags might be missing for considerable number of videos which are not among the most popularity, it is worth discovering whether the models are useful to categorizing videos with only titles and descriptions, not tags. Finally, we include all of the information we have as the full model and evaluate whether if the improvement exceeds the extra time spent on the larger matrices.
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{cccc}
+    \toprule
+    & \multicolumn{3}{c}{\textsc{Features}} \\
+    \cline{2-4}
+    Model & Title & Description & Tags \\
+    \midrule
+    1 & & & X \\
+    2 & X & & \\
+    3 & X & X & \\
+    4 & X & X & X \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Generalization and sub-categorization}
+
+Our initial attempts will be to train the model in a binary classification exercise: whether a video is or is not a particular YouTube category. We intend that our final product categorize videos into the full suite of options available. When we are satisfied with the performance of our model, and time permitting, we hope to extend its application to videos in different languages and regions. The expectation is comparable performance across languages. We would not be surprised to find worse performance of the model with data that spanned regions, for the local context with which people conceive of and speak about a category could vary and cause the model to over-generalize its category definitions.
+
+\subsection*{3.6 Task Assignment}
+
+\begin{table}[H]
+  \centering
+  \resizebox{\textwidth}{!} {
+    \begin{tabular}{lll}
+      \toprule
+      & Ta-Yun & Patrick \\
+      \midrule
+      \multirow{2}{*}{Proposal} & Text Representation, & Introduction, Unsupervised Learning \\
+      & Supervised Learning, Action Plan & Data Summary \\ [0.5em]
+      Text Representation & Bag of Words, TF-IDF &  LSI, Word2Vec \\ [0.5em]
+      Supervised Classifiers & Baseline and Supervised Models & --- \\ [0.5em]
+      Deep Learning & LSTM and BLSTM & LSTM and BLSTM \\ [0.5em]
+      Final Report & Experimental Result, Visualization & Experimental Result, Literature Review \\
+      \bottomrule
+    \end{tabular}
+  }
+\end{table}
+
+\bibliographystyle{plain}
+\bibliography{citations}
+
+\end{document}
