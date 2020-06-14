@@ -20,6 +20,12 @@ We attempt to recreate the decision a YouTube user makes selecting a category fo
 - torchtext 0.6.0
 - youtube-transcript-api 0.3.1
 
+## Get the Data
+```
+$ cd data
+$ sh get_fullfiles.sh
+```
+
 ## Getting started
 The program `run_pipeline.py` executes the data and modeling pipelines. The `--config` flag identifies the location of the `YAML` file that parameterizes the pipeline. The `--out` flag identifies the directory in which to save the results of the models and the model itself.
 ```
